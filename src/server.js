@@ -1,13 +1,13 @@
 let express = require('express')
 let bodyParser = require('body-parser')
 let {cartItems, products} = require('./fake-data')
-let {mongoClient} = require('mongodb')
+let {MongoClient} = require('mongodb')
 
 let app = express()
 app.use(bodyParser.json())
 
 app.get('/api/products', async (req, res) => {
-  const client = mongoClient('mongodb://0.0.0.0:27017',
+  const client = await MongoClient.connect('mongodb://0.0.0.0:27017',
     {useNewUrlParser: true, useUnifiedTopology: true}
   );
   const db = client.db('vue-db')
