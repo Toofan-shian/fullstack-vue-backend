@@ -1,31 +1,38 @@
 let express = require('express')
 let bodyParser = require('body-parser')
-let {MongoClient} = require('mongodb')
+const {MongoClient} = require('mongodb')
+const path = require('path')
+const history = require('connect-history-api-fallback')
 
 let app = express()
 app.use(bodyParser.json())
+app.use('/images', express.static(path.join(__dirname, '../assets')))
+app.use(express.static(path.resolve(__dirname, '../dist'), { maxAge: '1y', etag: false }))
+app.use(history())
 
+
+const mongoConnectionUrl = "mongodb+srv://toofan:test123456@cluster0.bpt6m7c.mongodb.net/?retryWrites=true&w=majority"
 
 //all products
 app.get('/api/products', async (req, res) => {
-  const client = await MongoClient.connect('mongodb://0.0.0.0:27017',
+  const client = await MongoClient.connect(mongoConnectionUrl,
     {useNewUrlParser: true, useUnifiedTopology: true}
   );
-  const db = client.db('vue-db')
+  const db = client.db('full-stack-vue')
   const products = await db.collection('products')
     .find().toArray()
 
-  res.status(200).json(products).
+  res.status(200).json(products)
   client.close()
 })
 
 //cart items
 app.get('/api/users/:userId/cart', async (req, res) => {
   const client = await MongoClient.connect(
-    'mongodb://0.0.0.0:27017',
+    mongoConnectionUrl,
     {useNewUrlParser: true, useUnifiedTopology: true}
   )
-  const db = client.db('vue-db')
+  const db = client.db('full-stack-vue')
   const userId = req.params.userId
   const user = await db.collection('users')
     .findOne({id: `${userId}`})
@@ -52,10 +59,10 @@ app.get('/api/users/:userId/cart', async (req, res) => {
 app.get('/api/products/:productId', async (req, res) => {
   const { productId } = req.params;
   const client = await MongoClient.connect(
-    'mongodb://0.0.0.0:27017',
+    mongoConnectionUrl,
     {useNewUrlParser: true, useUnifiedTopology: true}
   )
-  const db = client.db('vue-db')
+  const db = client.db('full-stack-vue')
   const products = await db.collection('products');
   const product = await products.findOne({id: `${productId}`})
 
@@ -73,10 +80,10 @@ app.post('/api/users/:userId/cart', async (req, res) => {
   let {userId} = req.params;
 
   const client = await MongoClient.connect(
-    'mongodb://0.0.0.0:27017',
+    mongoConnectionUrl,
     {useNewUrlParser: true, useUnifiedTopology: true}
   )
-  const db = client.db('vue-db');
+  const db = client.db('full-stack-vue');
   await db.collection("users").updateOne({id: userId}, {
     $addToSet: {cartItems: productId}
   })
@@ -100,19 +107,19 @@ app.post('/api/users/:userId/cart', async (req, res) => {
 app.delete('/api/users/:userId/cart/:productId', async (req, res) => {
   const {productId, userId} = req.params;
   const client = await MongoClient.connect(
-    "mongodb://0.0.0.0:27017",
+    mongoConnectionUrl,
     {useNewUrlParser: true, useUnifiedTopology: true}
   )
-  const users = await client.db('vue-db')
+  const users = await client.db('full-stack-vue')
   .collection('users')
-  const allProducts = await client.db('vue-db')
+  const allProducts = await client.db('full-stack-vue')
   .collection('products')
   .find()
   .toArray()
   await users.updateOne({id: userId}, {
     $pull: {cartItems: productId}
   })
-  const currentUser = await client.db('vue-db')
+  const currentUser = await client.db('full-stack-vue')
     .collection('users')
     .findOne({id: userId})
   const newCart = currentUser.cartItems
@@ -121,6 +128,11 @@ app.delete('/api/users/:userId/cart/:productId', async (req, res) => {
   })
   res.status(202).json(newProducts)
   client.close()
+})
+
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'))
 })
 
 app.listen(5000, () => {
